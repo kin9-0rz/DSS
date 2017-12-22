@@ -161,7 +161,7 @@ public class PluginManager {
         for (DexClassLoader dcl : mDexClassLoaders) {
             try {
                 clz = Class.forName(className, true, dcl);
-            } catch (ClassNotFoundException ignored) {
+            } catch (Exception | ExceptionInInitializerError ignored) {
             }
         }
 
