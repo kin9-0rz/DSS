@@ -25,36 +25,22 @@
 package me.mikusjelly.dss.dl;
 
 import android.content.Context;
-import android.util.Log;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import dalvik.system.DexClassLoader;
-import me.mikusjelly.dss.InvocationTarget;
+import me.mikusjelly.dss.reflect.InvocationTarget;
 
-/**
- * Created by bin on 08/12/2017.
- */
 
 public class PluginManager {
-
-    private static PluginManager sInstance;
-
-    public ArrayList<DexClassLoader> getDexClassLoaders() {
-        return mDexClassLoaders;
-    }
-
-    ArrayList<DexClassLoader> mDexClassLoaders = new ArrayList<>();
+    private static WeakReference<PluginManager> weakReferenceInstance;
+    private static ArrayList<DexClassLoader> mDexClassLoaders = new ArrayList<>();
     private Context mContext;
     private String mNativeLibDir = null;
-    private DexClassLoader mDexClassLoader = null;
-    private String className;
-    private String methodName;
-    private Class<?>[] parameterTypes;
-    private Object[] parameters;
 
     private PluginManager(Context context) {
         mContext = context.getApplicationContext();
@@ -62,15 +48,10 @@ public class PluginManager {
     }
 
     public static PluginManager getInstance(Context context) {
-        if (sInstance == null) {
-            synchronized (PluginManager.class) {
-                if (sInstance == null) {
-                    sInstance = new PluginManager(context);
-                }
-            }
+        if (weakReferenceInstance == null || weakReferenceInstance.get() == null) {
+            weakReferenceInstance = new WeakReference<>(new PluginManager(context));
         }
-
-        return sInstance;
+        return weakReferenceInstance.get();
     }
 
     /**
@@ -88,12 +69,10 @@ public class PluginManager {
     /**
      * @param dexPath  plugin path
      * @param hasSoLib whether exist so lib in plugin
-     * @return
+     * @return void
      */
-    public void loadApk(final String dexPath, boolean hasSoLib) {
-        mDexClassLoader = createDexClassLoader(dexPath);
-
-        mDexClassLoaders.add(mDexClassLoader);
+    private void loadApk(final String dexPath, boolean hasSoLib) {
+        mDexClassLoaders.add(createDexClassLoader(dexPath));
 
         if (hasSoLib) {
             copySoLib(dexPath);
@@ -110,7 +89,7 @@ public class PluginManager {
     /**
      * copy .so file to pluginlib dir.
      *
-     * @param dexPath
+     * @param dexPath dex path
      */
     private void copySoLib(String dexPath) {
         // TODO: copy so lib async will lead to bugs maybe, waiting for
@@ -124,54 +103,46 @@ public class PluginManager {
         SoLibManager.getSoLoader().copyPluginSoLib(mContext, dexPath, mNativeLibDir);
     }
 
-    public String getClassName() {
-        return className;
+
+    public Object invoke(InvocationTarget target) {
+        Class<?> clz = loadClass(target.getClassName());
+        if (clz == null) {
+            return null;
+        }
+
+        Method mtd = getMethod(clz, target);
+        if (mtd == null) {
+            return null;
+        }
+
+        Object result = null;
+
+        try {
+            result = mtd.invoke(null, target.getParameters());
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
 
-    public void setClassName(String className) {
-        this.className = className;
-    }
-
-    public String getMethodName() {
-        return methodName;
-    }
-
-    public void setMethodName(String methodName) {
-        this.methodName = methodName;
-    }
-
-    public Class<?>[] getParameterTypes() {
-        return parameterTypes;
-    }
-
-    public void setParameterTypes(Class<?>[] parameterTypes) {
-        this.parameterTypes = parameterTypes;
-    }
-
-    public Object[] getParameters() {
-        return parameters;
-    }
-
-    public void setParameters(Object[] parameters) {
-        this.parameters = parameters;
-    }
-
-    public Class<?> loadClass(String className) {
+    private Class<?> loadClass(String className) {
         Class<?> clz = null;
         for (DexClassLoader dcl : mDexClassLoaders) {
             try {
-                clz = Class.forName(className, true, dcl);
-            } catch (Exception | ExceptionInInitializerError ignored) {
+                clz = dcl.loadClass(className);
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
             }
         }
 
         return clz;
     }
 
-    public Method getMethod(Class<?> clz) {
+    private Method getMethod(Class<?> clz, InvocationTarget target) {
         Method mtd = null;
         try {
-            mtd = clz.getDeclaredMethod(this.methodName, this.parameterTypes);
+            mtd = clz.getDeclaredMethod(target.getMethodName(), target.getParameterTypes());
             mtd.setAccessible(true);
         } catch (NoSuchMethodException e) {
             e.printStackTrace();
@@ -179,59 +150,4 @@ public class PluginManager {
         return mtd;
     }
 
-    public Object invokeTarget(InvocationTarget invocationTarget) {
-        setClassName(invocationTarget.getClassName());
-        setMethodName(invocationTarget.getMethodName());
-        setParameterTypes(invocationTarget.getParameterTypes());
-        setParameters(invocationTarget.getParameters());
-
-        return invoke();
-    }
-
-    //   https://github.com/wuxiaosu/DexClassLoaderDemo/blob/master/dexclassloaderdemo/src/main/java/com/wuxiaosu/dexclassloaderdemo/DexClassManage.java
-
-    /**
-     * Example:
-     * mPluginManager.setClassName("com.ms.plugin.bm");
-     * mPluginManager.setMethodName("a");
-     * mPluginManager.setParameterTypes(new Class[]{String.class});
-     * mPluginManager.setParameters(new Object[]{"BgcdHBQf"});
-     * Object object = mPluginManager.invoke();
-     *
-     * @return Object result
-     */
-
-    public Object invoke() {
-
-        Class<?> clz = loadClass(this.className);
-        if (clz == null) {
-            return null;
-        }
-
-        Method mtd = getMethod(clz);
-        if (mtd == null) {
-            return null;
-        }
-//        int  modifiers  =  mtd.getModifiers();
-//        boolean mIsStatic = Modifier.isStatic(modifiers);
-
-        // 实例化
-        Object instance = null;
-//        Constructor localConstructor = null;
-
-        Object result = null;
-
-        try {
-            result = mtd.invoke(instance, this.parameters);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-
-        return result;
-
-    }
-
-    public void clear() {
-        this.mDexClassLoaders.clear();
-    }
 }

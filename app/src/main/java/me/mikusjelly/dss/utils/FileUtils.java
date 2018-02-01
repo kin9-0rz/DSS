@@ -22,25 +22,38 @@
  * SOFTWARE.
  */
 
-package me.mikusjelly.dss;
+package me.mikusjelly.dss.utils;
 
-import java.util.List;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 
-import eu.chainfire.libsuperuser.Shell;
+public class FileUtils {
 
-/**
- *
- * Created by mikusjelly on 21/12/2017.
- */
+    public static String readFile(String fileName) throws IOException {
+        FileInputStream fis = new FileInputStream(fileName);
+        BufferedReader in = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
 
-public class PropertyUtil {
+        StringBuilder sb = new StringBuilder();
+        while (in.ready()) {
+            String line = in.readLine();
+            sb.append(line).append('\n');
+        }
+        in.close();
+        fis.close();
 
-    public static void set(String key, String val) {
-        Shell.SU.run("setprop " + key + " " + val);
+        return sb.toString();
     }
 
-    public static String get(String key) {
-        List<String> result = Shell.SU.run("getprop " + key);
-        return result.get(0);
+    public static void writeFile(String fileName, String contents) throws FileNotFoundException,
+                    UnsupportedEncodingException {
+        PrintWriter out = new PrintWriter(fileName, "UTF-8");
+        out.write(contents);
+        out.close();
     }
+
 }

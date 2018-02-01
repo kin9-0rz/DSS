@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package me.mikusjelly.dss;
+package me.mikusjelly.dss.reflect;
 
 import java.util.Arrays;
 
@@ -33,6 +33,13 @@ public class InvocationTarget {
     private Class<?>[] parameterTypes;
     private Object[] parameters;
 
+    /**
+     * @param id 每个解密函数+方法+参数，对应一个唯一的ID
+     * @param className com.ms.plugin.bm
+     * @param methodName a
+     * @param parameterTypes new Class[]{String.class}
+     * @param parameters new Object[]{"BgcdHBQf"}
+     */
     public InvocationTarget(String id, String className, String methodName, Class<?>[] parameterTypes, Object[] parameters) {
         this.id = id;
         this.className = className;

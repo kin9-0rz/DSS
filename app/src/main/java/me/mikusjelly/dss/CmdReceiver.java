@@ -27,25 +27,26 @@ package me.mikusjelly.dss;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-
-/**
- * 接收命令，启动DSS服务
- * Created by mikusjelly on 08/12/2017.
- */
+import android.util.Log;
 
 public class CmdReceiver extends BroadcastReceiver {
 
-    public static String INTENT_ACTION = "dss";
+    public static String INTENT_START_DSS = "dss.start";
+    public static String INTENT_STOP_DSS = "dss.stop";
 
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if (INTENT_ACTION.equals(intent.getAction())) {
 
+        String action = intent.getAction();
+        String TAG = "DSS";
+        if (INTENT_START_DSS.equals(action)) {
+            Log.d(TAG, "start.....");
             context.startService(new Intent(context, DSService.class));
+        } else if (INTENT_STOP_DSS.equals(action)) {
+            Log.d(TAG, "stop......");
+            context.stopService(new Intent(context, DSService.class));
 
         }
     }
-
-
 }

@@ -45,7 +45,7 @@
 
         <receiver android:name=".CmdReceiver">
             <intent-filter>
-                <action android:name="dss" />
+                <action android:name="dss.start" />
             </intent-filter>
         </receiver>
         <service android:name=".DSService"/>
