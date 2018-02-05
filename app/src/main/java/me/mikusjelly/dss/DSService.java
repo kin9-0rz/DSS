@@ -79,6 +79,8 @@ public class DSService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d("DSS", "onStartCommand");
+
         // 服务刚刚创建，没有解密操作。
         String PROP_IS_NEW = "dss.is.new";
         if (PropertyUtil.get(PROP_IS_NEW).equals("Yes")) {
@@ -86,7 +88,7 @@ public class DSService extends Service {
         } else {
             new Thread() {
                 public void run() {
-                    Driver.dss(mPluginManager, "/data/local/od-targets.json");
+                    Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
                     PropertyUtil.set(PROP_IS_FINISH, "Yes");
                 }
             }.start();

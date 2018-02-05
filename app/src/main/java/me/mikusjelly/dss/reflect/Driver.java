@@ -21,6 +21,8 @@ import me.mikusjelly.dss.utils.FileUtils;
 
 public class Driver {
 
+    public final static String Output = "/data/local/dss_data/od-output.json";
+
     static List<InvocationTarget> targets = null;
 
     /**
@@ -61,7 +63,7 @@ public class Driver {
 
         String json = gson.toJson(idToOutput);
         try {
-            FileUtils.writeFile("/data/local/od-output.json", json);
+            FileUtils.writeFile(Output, json);
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
             e.printStackTrace();
         }
