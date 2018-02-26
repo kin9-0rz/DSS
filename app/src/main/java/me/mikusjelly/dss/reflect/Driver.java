@@ -172,8 +172,13 @@ public class Driver {
                     }
                     parameters[i] = chars;
                 } else {
-//                    System.out.println("Parsing: " + jsonValue + " as " + parameterTypes[i]);
-                    parameters[i] = gson.fromJson(jsonValue, parameterTypes[i]);
+                    try {
+                        parameters[i] = gson.fromJson(jsonValue, parameterTypes[i]);
+                    } catch (JsonSyntaxException e) {
+                        e.printStackTrace();
+                        System.out.println("Parsing: " + jsonValue + " as " + parameterTypes[i]);
+
+                    }
                 }
             }
         }

@@ -119,7 +119,11 @@ public class PluginManager {
 
         try {
             result = mtd.invoke(null, target.getParameters());
-        } catch (IllegalAccessException | InvocationTargetException e) {
+        } catch (IllegalAccessException  ignore) {
+            ignore.printStackTrace();
+        } catch (InvocationTargetException ignore) {
+            ignore.printStackTrace();
+        } catch (ExceptionInInitializerError e) {
             e.printStackTrace();
         }
 

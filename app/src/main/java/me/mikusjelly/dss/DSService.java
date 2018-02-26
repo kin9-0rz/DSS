@@ -27,11 +27,17 @@ package me.mikusjelly.dss;
 import android.app.Service;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 import me.mikusjelly.dss.dl.PluginManager;
 import me.mikusjelly.dss.reflect.Driver;
@@ -44,7 +50,7 @@ public class DSService extends Service {
      * dexsim 会定时读取属性的值，结果为Yes，则获取解密后的数据
      */
     private final String PROP_IS_FINISH = "dss.is.finish";
-
+    String TAG = "DSS";
     private PluginManager mPluginManager;
 
     @Override
@@ -80,21 +86,32 @@ public class DSService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d("DSS", "onStartCommand");
+        Log.d(TAG, "New is " + PropertyUtil.get_new());
+        Log.d(TAG, "Finish is " + PropertyUtil.get_finish());
 
-        // 服务刚刚创建，没有解密操作。
-        String PROP_IS_NEW = "dss.is.new";
-        if (PropertyUtil.get(PROP_IS_NEW).equals("Yes")) {
-            PropertyUtil.set(PROP_IS_NEW, "No");
-        } else {
-            new Thread() {
-                public void run() {
-                    Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
-                    PropertyUtil.set(PROP_IS_FINISH, "Yes");
-                }
-            }.start();
-        }
+//        if (PropertyUtil.get_new().equals("Yes")) {
+//            // 服务刚刚创建，没有解密操作。
+//            PropertyUtil.set_new("No");
+//            Log.d(TAG, "New is " + PropertyUtil.get_new());
+//        } else {
+//            new Thread() {
+//                public void run() {
+//                    Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
+//                    PropertyUtil.set_finish("Yes");
+//                }
+//            }.start();
+//        }
+
+        new Thread() {
+            public void run() {
+                Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
+                PropertyUtil.set_finish("Yes");
+            }
+        }.start();
+
         return super.onStartCommand(intent, flags, startId);
     }
+
 
     @Override
     public void onDestroy() {
@@ -107,4 +124,45 @@ public class DSService extends Service {
         return null;
     }
 
+
+    class ServerThread extends Thread {
+        boolean isLoop = true;
+
+        public void setIsLoop(boolean isLoop) {
+            this.isLoop = isLoop;
+        }
+
+        @Override
+        public void run() {
+            Log.d(TAG, "running");
+            ServerSocket serverSocket = null;
+            try {
+                serverSocket = new ServerSocket(9999);
+                while (isLoop) {
+                    Socket socket = serverSocket.accept();
+                    Log.d(TAG, "accept");
+
+                    DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+                    DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
+                    String msg = inputStream.readUTF();
+                    Message message = Message.obtain();
+                    Bundle bundle = new Bundle();
+                    bundle.putString("MSG", msg);
+                    message.setData(bundle);
+                    socket.close();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                Log.d(TAG, "destory");
+                if (serverSocket != null) {
+                    try {
+                        serverSocket.close();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
 }

@@ -39,58 +39,23 @@ public class PropertyUtil {
         List<String> result = Shell.SU.run("getprop " + key);
         return result.get(0);
     }
-//
-//    public static String getInEmu(String key) {
-//        List<String> result = Shell.SH.run("getprop " + key);
-//        Log.d("DEBUGX", result.toString());
-//        return result.get(0);
-//    }
-//
-//    public static void setInEmu(String key, String val) {
-//        String cmd = "setprop " + key + " " + val;
-//        Log.d("DEBUG Emu", cmd);
-//        Shell.SH.run(cmd);
-//    }
-//
-//    public static List<String> runCmd(String command) {
-//        ArrayList<String> result = new ArrayList<>();
-//        try {
-//            Process process = Runtime.getRuntime().exec(command);
-//            process.waitFor();
-//            InputStreamReader inputStr = new InputStreamReader(process.getInputStream());
-//            BufferedReader br = new BufferedReader(inputStr);
-//
-//            String line;
-//            while ((line = br.readLine()) != null) {
-//                result.add(line);
-//            }
-//
-//            process.destroy();
-//            br.close();
-//            inputStr.close();
-//        } catch (IOException | InterruptedException e) {
-//            e.printStackTrace();
-//        }
-//
-//        return result;
-//    }
-//
-//    //    ro.setupwizard.mode]: [EMULATOR]
-//    private static String getSystemProperty(String name) throws Exception {
-//        Class systemPropertyClazz = Class.forName("android.os.SystemProperties");
-//        return (String) systemPropertyClazz.getMethod("get", new Class[]{String.class})
-//                .invoke(systemPropertyClazz, new Object[]{name});
-//    }
-//
-//    public static boolean checkEmulator() {
-//        boolean emu = false;
-//        try {
-//            emu = getSystemProperty("ro.kernel.qemu").length() > 0;
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        return emu;
-//
-//
-//    }
+
+    public static String get_new() {
+        List<String> result = Shell.SH.run("cat /data/local/dss_data/new");
+        return result.get(0);
+    }
+
+    public static String get_finish() {
+        List<String> result = Shell.SH.run("cat /data/local/dss_data/finish");
+        return result.get(0);
+    }
+
+    public static void set_new(String key) {
+        Shell.SH.run(String.format("echo %s > /data/local/dss_data/new", key));
+    }
+
+    public static void set_finish(String key) {
+        Shell.SH.run(String.format("echo %s > /data/local/dss_data/finish", key));
+    }
+
 }
