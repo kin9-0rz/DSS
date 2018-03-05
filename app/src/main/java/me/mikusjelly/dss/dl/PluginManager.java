@@ -119,11 +119,13 @@ public class PluginManager {
 
         try {
             result = mtd.invoke(null, target.getParameters());
-        } catch (IllegalAccessException  ignore) {
+        } catch (IllegalAccessException ignore) {
             ignore.printStackTrace();
         } catch (InvocationTargetException ignore) {
             ignore.printStackTrace();
         } catch (ExceptionInInitializerError e) {
+            e.printStackTrace();
+        } catch (VerifyError e) {
             e.printStackTrace();
         }
 
@@ -136,6 +138,8 @@ public class PluginManager {
             try {
                 clz = dcl.loadClass(className);
             } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (VerifyError e) {
                 e.printStackTrace();
             }
         }
