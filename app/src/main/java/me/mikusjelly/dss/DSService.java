@@ -51,6 +51,7 @@ public class DSService extends Service {
      */
     private final String PROP_IS_FINISH = "dss.is.finish";
     String TAG = "DSS";
+
     private PluginManager mPluginManager;
 
     @Override
@@ -89,19 +90,6 @@ public class DSService extends Service {
         Log.d(TAG, "New is " + PropertyUtil.get_new());
         Log.d(TAG, "Finish is " + PropertyUtil.get_finish());
 
-//        if (PropertyUtil.get_new().equals("Yes")) {
-//            // 服务刚刚创建，没有解密操作。
-//            PropertyUtil.set_new("No");
-//            Log.d(TAG, "New is " + PropertyUtil.get_new());
-//        } else {
-//            new Thread() {
-//                public void run() {
-//                    Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
-//                    PropertyUtil.set_finish("Yes");
-//                }
-//            }.start();
-//        }
-
         new Thread() {
             public void run() {
                 Driver.dss(mPluginManager, "/data/local/dss_data/od-targets.json");
@@ -125,44 +113,4 @@ public class DSService extends Service {
     }
 
 
-    class ServerThread extends Thread {
-        boolean isLoop = true;
-
-        public void setIsLoop(boolean isLoop) {
-            this.isLoop = isLoop;
-        }
-
-        @Override
-        public void run() {
-            Log.d(TAG, "running");
-            ServerSocket serverSocket = null;
-            try {
-                serverSocket = new ServerSocket(9999);
-                while (isLoop) {
-                    Socket socket = serverSocket.accept();
-                    Log.d(TAG, "accept");
-
-                    DataInputStream inputStream = new DataInputStream(socket.getInputStream());
-                    DataOutputStream outputStream = new DataOutputStream(socket.getOutputStream());
-                    String msg = inputStream.readUTF();
-                    Message message = Message.obtain();
-                    Bundle bundle = new Bundle();
-                    bundle.putString("MSG", msg);
-                    message.setData(bundle);
-                    socket.close();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                Log.d(TAG, "destory");
-                if (serverSocket != null) {
-                    try {
-                        serverSocket.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        }
-    }
 }

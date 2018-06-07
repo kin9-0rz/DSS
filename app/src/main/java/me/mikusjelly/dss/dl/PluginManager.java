@@ -25,14 +25,20 @@
 package me.mikusjelly.dss.dl;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import dalvik.system.DexClassLoader;
+import me.mikusjelly.dss.reflect.InvocationFieldTarget;
 import me.mikusjelly.dss.reflect.InvocationTarget;
 
 
@@ -52,6 +58,49 @@ public class PluginManager {
             weakReferenceInstance = new WeakReference<>(new PluginManager(context));
         }
         return weakReferenceInstance.get();
+    }
+
+    /*
+    如果其中一个Class，获取失败，那么该class就跳过
+     */
+    private static String getFieldValue(Class<?> c, String fieldName) {
+        Object obj = c;
+        for (Constructor<?> constructor : c.getDeclaredConstructors()) {
+            if (constructor.getParameterTypes().length == 0) {
+                constructor.setAccessible(true);
+                try {
+                    obj = constructor.newInstance();
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                }
+                break;
+            }
+        }
+
+        String result = null;
+        try {
+            Field f = c.getDeclaredField(fieldName);
+            f.setAccessible(true);
+            if (f.isAccessible()) {
+                try {
+                    result = (String) f.get(obj);
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        } catch (SecurityException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+        }
+
+        return result;
     }
 
     /**
@@ -74,9 +123,9 @@ public class PluginManager {
     private void loadApk(final String dexPath, boolean hasSoLib) {
         mDexClassLoaders.add(createDexClassLoader(dexPath));
 
-        if (hasSoLib) {
-            copySoLib(dexPath);
-        }
+//        if (hasSoLib) {
+//            copySoLib(dexPath);
+//        }
 
     }
 
@@ -102,7 +151,6 @@ public class PluginManager {
 
         SoLibManager.getSoLoader().copyPluginSoLib(mContext, dexPath, mNativeLibDir);
     }
-
 
     public Object invoke(InvocationTarget target) {
         Class<?> clz = loadClass(target.getClassName());
@@ -156,6 +204,118 @@ public class PluginManager {
             e.printStackTrace();
         }
         return mtd;
+    }
+
+    public HashMap<String, String> getFieldValues(InvocationFieldTarget target) {
+        String result;
+        Class<?> clz = loadClass(target.getClassName());
+        if (clz == null) {
+            return null;
+        }
+
+//        Class<?> superclass = clz.getSuperclass();
+//        while (superclass != null) {
+//            if(superclass.getName().equals("java.lang.Object")){
+//                break;
+//            }
+//            superclass = superclass.getSuperclass();
+//        }
+
+        // TODO 参数为context 是否初始化？ this.mContext
+        // 初始化一次就行了
+        Object obj = clz;
+        Boolean isStatic = true; // 如果初始化失败，那么只有Field的类型是static才获取，非static类型则不获取
+        for (Constructor<?> constructor : clz.getDeclaredConstructors()) {
+            if (constructor.getParameterTypes().length == 0) {
+                constructor.setAccessible(true);
+                try {
+                    obj = constructor.newInstance();
+                    isStatic = false;
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InvocationTargetException e) {
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } catch (Error e) {
+                    e.printStackTrace();
+                }
+                break;
+            }
+        }
+
+        HashMap<String, String> fvs = new HashMap<>();
+        for (String fn : target.getFieldNames()) {
+//            result = getFieldValue(clz, fn);
+
+
+            result = getFieldValueEx(clz, obj, fn, isStatic);
+
+
+            if (result != null && result.length() > 0) {
+                fvs.put(fn, escapeFieldValue(result));
+            }
+        }
+
+        return fvs;
+    }
+
+
+    private static String getFieldValueEx(Class<?> c, Object obj, String fieldName, boolean flag) {
+
+
+        String result = null;
+        Field f;
+        try {
+            f = c.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+           return result;
+        }
+
+        if (flag) {
+            boolean isStatic = Modifier.isStatic(f.getModifiers());
+            if(!isStatic) {
+                return result;
+            }
+        }
+
+        f.setAccessible(true);
+        if (f.isAccessible()) {
+            try {
+                result = (String) f.get(obj);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return result;
+    }
+
+
+    public static String escapeFieldValue(String str) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            switch (c) {
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                default:
+                    if (c < 0x20 || c == 0x7F) sb.append(String.format("\\u%04X", (int) c));
+                    else sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
 }

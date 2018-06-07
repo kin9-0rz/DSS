@@ -43,9 +43,6 @@ import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-/**
- * Created by bin on 08/12/2017.
- */
 
 class SoLibManager {
 

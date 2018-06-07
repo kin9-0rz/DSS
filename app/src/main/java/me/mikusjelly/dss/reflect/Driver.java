@@ -1,5 +1,7 @@
 package me.mikusjelly.dss.reflect;
 
+import android.util.Log;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -11,6 +13,7 @@ import com.google.gson.JsonSyntaxException;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -21,9 +24,11 @@ import me.mikusjelly.dss.utils.FileUtils;
 
 public class Driver {
 
-    public final static String Output = "/data/local/dss_data/od-output.json";
+    private final static String Output = "/data/local/dss_data/od-output.json";
 
     static List<InvocationTarget> targets = null;
+
+    private PluginManager mPluginManager;
 
     /**
      * 执行解密
@@ -31,14 +36,91 @@ public class Driver {
      * @param fileName 解密数据的文件名
      */
     public static void dss(PluginManager mPluginManager, String fileName) {
-        Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+        Log.w("DSS", "----------------------------------------------------------------");
+
         try {
-            targets = loadTargetsFromFile(fileName, gson);
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IOException e) {
-            System.out.println("Unable to parse targets.");
-            return;
+            try {
+                decode(fileName, mPluginManager);
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private static void decode(String fileName, PluginManager mPluginManager) throws IOException, NoSuchMethodException, ClassNotFoundException {
+        Gson gson = new GsonBuilder().disableHtmlEscaping().create();
+
+        String targetJson = FileUtils.readFile(fileName);
+        String head20 = targetJson.substring(0, 20);
+
+        if (head20.contains("\"type\": \"field\"")) {
+            JsonObject jsonObject = new JsonParser().parse(targetJson).getAsJsonObject();
+            List<InvocationFieldTarget> targets = genarateFieldTargets(jsonObject.get("data").getAsJsonArray(), gson);
+            decodeFeilds(targets, mPluginManager, gson);
+        } else {
+            JsonArray jsonObject = new JsonParser().parse(targetJson).getAsJsonArray();
+            List<InvocationTarget> targets = genarateMethodTargets(jsonObject, gson);
+            decodeMethods(targets, mPluginManager, gson);
+        }
+    }
+
+// ----------------------------------------------------------------------------------------------
+
+    private static void decodeFeilds(List<InvocationFieldTarget> targets, PluginManager mPluginManager, Gson gson) {
+        Log.w("DSS", "解密Field - 开始");
+        HashMap<String, HashMap<String, String>> idToOutput = new HashMap<>();
+        for (InvocationFieldTarget target : targets) {
+            HashMap<String, String> fieldValues = mPluginManager.getFieldValues(target);
+            if (fieldValues == null || fieldValues.size() == 0) {
+                continue;
+            }
+            Log.w("DSS", "Target Next");
+            idToOutput.put(target.getClassName(), fieldValues);
+
         }
 
+        Log.w("DSS", "解密Field - 结束");
+
+        String json = gson.toJson(idToOutput);
+
+        try {
+            FileUtils.writeFile(Output, json);
+        } catch (FileNotFoundException | UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static List<InvocationFieldTarget> genarateFieldTargets(JsonArray targetItems, Gson gson)
+            throws ClassNotFoundException, NoSuchMethodException, SecurityException, IOException {
+        List<InvocationFieldTarget> targets = new LinkedList<>();
+        for (JsonElement element : targetItems) {
+
+            JsonObject targetItem = element.getAsJsonObject();
+            String className = targetItem.get("className").getAsString();
+            JsonArray fieldName = targetItem.get("fieldName").getAsJsonArray();
+
+
+            ArrayList<String> arr = new ArrayList<>();
+            for (JsonElement s : fieldName) {
+                arr.add(s.getAsString());
+            }
+
+            targets.add(new InvocationFieldTarget(className, arr));
+        }
+
+        return targets;
+    }
+
+// ----------------------------------------------------------------------------------------------
+
+
+    private static void decodeMethods(List<InvocationTarget> targets, PluginManager mPluginManager, Gson gson) {
+        Log.w("DSS", "解密method");
         String output;
         String status;
         Map<String, String[]> idToOutput = new HashMap<>();
@@ -67,15 +149,10 @@ public class Driver {
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
             e.printStackTrace();
         }
-
     }
 
-    // https://github.com/mikusjelly/OracleDriver
-    private static List<InvocationTarget> loadTargetsFromFile(String fileName, Gson gson)
+    private static List<InvocationTarget> genarateMethodTargets(JsonArray targetItems, Gson gson)
             throws ClassNotFoundException, NoSuchMethodException, SecurityException, IOException {
-        String targetJson = FileUtils.readFile(fileName);
-        JsonArray targetItems = new JsonParser().parse(targetJson).getAsJsonArray();
-        // JsonArray targetItems = json.getAsJsonArray();
         List<InvocationTarget> targets = new LinkedList<>();
         for (JsonElement element : targetItems) {
             JsonObject targetItem = element.getAsJsonObject();
@@ -101,9 +178,9 @@ public class Driver {
 
         }
 
-
         return targets;
     }
+
 
     // https://github.com/mikusjelly/OracleDriver
     private static Class<?> smaliToJavaClass(String className) throws ClassNotFoundException {
@@ -172,6 +249,7 @@ public class Driver {
                     }
                     parameters[i] = chars;
                 } else {
+
                     try {
                         parameters[i] = gson.fromJson(jsonValue, parameterTypes[i]);
                     } catch (JsonSyntaxException e) {
@@ -209,7 +287,7 @@ public class Driver {
             }
         }
         sb.append("\"");
+        Log.d("TESTTEST", str + " -> " + sb);
         return sb.toString();
     }
-
 }
