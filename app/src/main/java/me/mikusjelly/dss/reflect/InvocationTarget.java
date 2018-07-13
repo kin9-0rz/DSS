@@ -32,6 +32,8 @@ public class InvocationTarget {
     private String methodName;
     private Class<?>[] parameterTypes;
     private Object[] parameters;
+    private boolean isObject = false;
+    private String argClassName;
 
     /**
      * @param id 每个解密函数+方法+参数，对应一个唯一的ID
@@ -72,6 +74,22 @@ public class InvocationTarget {
         this.methodName = methodName;
     }
 
+    public void setObject(boolean flag) {
+        this.isObject = flag;
+    }
+
+    public boolean argIsObject() {
+        return this.isObject;
+    }
+
+    public String getArgClassName() {
+        return argClassName;
+    }
+
+    public void setArgClassName(String argClassName) {
+        this.argClassName = argClassName;
+    }
+
     public Class<?>[] getParameterTypes() {
         return parameterTypes;
     }
@@ -80,6 +98,10 @@ public class InvocationTarget {
         this.parameterTypes = parameterTypes;
     }
 
+    /**
+     * 获取参数的值
+     * @return 参数值
+     */
     public Object[] getParameters() {
         return parameters;
     }

@@ -25,7 +25,9 @@
 package me.mikusjelly.dss.dl;
 
 import android.content.Context;
-import android.util.Log;
+import android.util.Base64;
+
+import com.google.gson.Gson;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
@@ -101,6 +103,58 @@ public class PluginManager {
         }
 
         return result;
+    }
+
+    private static Object getFieldValueEx(Class<?> c, Object obj, String fieldName, boolean flag) {
+        Object result = null;
+        Field f;
+        try {
+            f = c.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+            return result;
+        }
+
+        if (flag) {
+            boolean isStatic = Modifier.isStatic(f.getModifiers());
+            if (!isStatic) {
+                return result;
+            }
+        }
+
+        f.setAccessible(true);
+        if (f.isAccessible()) {
+            try {
+                result = f.get(obj);
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return result;
+    }
+
+    public static String escapeFieldValue(String str) {
+        StringBuilder sb = new StringBuilder();
+        for (char c : str.toCharArray()) {
+            switch (c) {
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '"':
+                    sb.append("\\\"");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                default:
+                    if (c < 0x20 || c == 0x7F) sb.append(String.format("\\u%04X", (int) c));
+                    else sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     /**
@@ -180,7 +234,7 @@ public class PluginManager {
         return result;
     }
 
-    private Class<?> loadClass(String className) {
+    public Class<?> loadClass(String className) {
         Class<?> clz = null;
         for (DexClassLoader dcl : mDexClassLoaders) {
             try {
@@ -207,7 +261,8 @@ public class PluginManager {
     }
 
     public HashMap<String, String> getFieldValues(InvocationFieldTarget target) {
-        String result;
+        Gson gson = new Gson();
+        Object result;
         Class<?> clz = loadClass(target.getClassName());
         if (clz == null) {
             return null;
@@ -248,74 +303,29 @@ public class PluginManager {
 
         HashMap<String, String> fvs = new HashMap<>();
         for (String fn : target.getFieldNames()) {
-//            result = getFieldValue(clz, fn);
-
-
             result = getFieldValueEx(clz, obj, fn, isStatic);
 
+            if (result == null) {
+                continue;
+            }
 
-            if (result != null && result.length() > 0) {
-                fvs.put(fn, escapeFieldValue(result));
+            if (result instanceof String) {
+                String tmp = String.valueOf(result);
+                if (tmp.length() > 0) {
+                    fvs.put(fn, escapeFieldValue(tmp));
+                }
+            } else if (result instanceof byte[]) {
+                String js = gson.toJson(result, byte[].class);
+                System.out.println("bytes -> " + js);
+                fvs.put(fn, js);
+            } else {
+                String js = gson.toJson(result);
+                System.out.println("others -> " + js);
+                fvs.put(fn, js);
             }
         }
 
         return fvs;
-    }
-
-
-    private static String getFieldValueEx(Class<?> c, Object obj, String fieldName, boolean flag) {
-
-
-        String result = null;
-        Field f;
-        try {
-            f = c.getDeclaredField(fieldName);
-        } catch (NoSuchFieldException e) {
-           return result;
-        }
-
-        if (flag) {
-            boolean isStatic = Modifier.isStatic(f.getModifiers());
-            if(!isStatic) {
-                return result;
-            }
-        }
-
-        f.setAccessible(true);
-        if (f.isAccessible()) {
-            try {
-                result = (String) f.get(obj);
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            }
-        }
-
-        return result;
-    }
-
-
-    public static String escapeFieldValue(String str) {
-        StringBuilder sb = new StringBuilder();
-        for (char c : str.toCharArray()) {
-            switch (c) {
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                default:
-                    if (c < 0x20 || c == 0x7F) sb.append(String.format("\\u%04X", (int) c));
-                    else sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 
 }

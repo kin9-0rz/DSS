@@ -5,6 +5,7 @@ import java.util.ArrayList;
 public class InvocationFieldTarget {
     private String className;
     private ArrayList<String> fieldNames;
+    private Class<?> fileType;
 
     /**
      * @param className com.ms.plugin.bm
@@ -13,6 +14,7 @@ public class InvocationFieldTarget {
     public InvocationFieldTarget(String className, ArrayList<String> fieldNames) {
         this.className = className;
         this.fieldNames = fieldNames;
+//        this.fileType = fileType;
     }
 
     public String getClassName() {
@@ -31,11 +33,16 @@ public class InvocationFieldTarget {
         this.fieldNames = fieldNames;
     }
 
+    public Class<?> getFileType() {
+        return fileType;
+    }
+
     @Override
     public String toString() {
-        return "InvocationTarget{" +
-                ", className='" + className + '\'' +
-                ", fieldNames='" + fieldNames + '\'' +
+        return "InvocationFieldTarget{" +
+                "className='" + className + '\'' +
+                ", fieldNames=" + fieldNames +
+                ", fileType=" + fileType +
                 '}';
     }
 }
