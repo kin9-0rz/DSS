@@ -12,6 +12,7 @@
 bin/
 gen/
 out/
+app/release/
 
 # Gradle files
 .gradle/
@@ -39,6 +40,9 @@ captures/
 .idea/gradle.xml
 .idea/dictionaries
 .idea/libraries
+.idea/caches/
+.idea/codeStyles/
+.idea/vcs.xml
 
 # Keystore files
 *.jks
